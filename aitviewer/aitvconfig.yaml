@@ -1,5 +1,5 @@
 # Access SMPL models.
-smplx_models: "../data/smplx_models"
+smplx_models: "/home/chqian/Project/AITviwer/aitviewer/body_model"
 star_models: "../data/star_models"
 supr_models: "../data/supr_models"
 
