@@ -3,12 +3,11 @@ import pickle as pkl
 
 import torch
 import numpy as np
-
+from pytorch3d.transforms import matrix_to_axis_angle
 from aitviewer.configuration import CONFIG as C
 from aitviewer.models.smpl import SMPLLayer
 from aitviewer.renderables.rigid_bodies import RigidBodies
 from aitviewer.renderables.smpl import SMPLSequence
-from aitviewer.renderables.arrows import Arrows
 from aitviewer.viewer import Viewer
 
 if __name__ == "__main__":
@@ -18,22 +17,19 @@ if __name__ == "__main__":
     # with open(r"/home/chqian/Project/PIP/PIP/data/dataset_work/UWB_IMU/Dataset_B/test.pt", "rb") as f:
     #     data = pkl.load(f, encoding="latin1")
     
-    path = "/home/chqian/Project/PIP/PIP/data/dataset_work/UWB_IMU/Dataset_B/test.pt"
-    #path = "/home/chqian/Project/PIP/PIP/data/dataset_work/TotalCapture/test.pt"
-    #path = "/home/chqian/Project/PIP/PIP/data/dataset_work/DIP_IMU/test.pt"
+    #path = "/home/chqian/Project/PIP/PIP/data/result/Dataset_B/PIP/0.pt"
+    
+    path = "/home/chqian/Project/PIP/PIP/data/result/Dataset_B_not_align/PIP/0.pt"
+    
     data = torch.load(path)
 
     # Whether we want to visualize all 17 sensors or just the 6 sensors used by DIP.
     all_sensors = False
+    uwb_imu_rot = np.array([[1, 0, 0], [0, 0, 1.0], [0, -1, 0]])
     
     # Get the data.
-    poses = data["pose"][0].view(-1,72)
-    tran = data["tran"][0].view(-1,3)
-    oris = data["ori"][0].numpy().reshape(-1,6,3,3)
-    accs = data["acc"][0].numpy().reshape(-1,6,3)
-    
-    # v_oris = data["vori"][0].numpy().reshape(-1,6,3,3)
-    # v_oris = v_oris[::2]
+    poses = matrix_to_axis_angle(data[0]).view(-1,72)
+    tran = data[1].view(-1,3)
     
     
     # Subject 6 is female, all others are male (cf. metadata.txt included in the downloaded zip file).
@@ -41,9 +37,7 @@ if __name__ == "__main__":
 
     # Downsample to 30 Hz.
     poses = poses[::2]
-    oris = oris[::2]
     tran = tran[::2]
-    accs = accs[::2]
 
     # DIP has no shape information, assume the mean shape.
     betas = torch.zeros((poses.shape[0], 10)).float().to(C.device)
@@ -79,15 +73,7 @@ if __name__ == "__main__":
         "rfoot",
     ]
 
-    # We manually choose the SMPL joint indices cooresponding to the above sensor placement.
-    joint_idxs = [20, 21, 4, 5, 15, 0]
-    
-    # Select only the 6 input sensors if configured.
-    sensor_sub_idxs = [7, 8, 11, 12, 0, 2] if not all_sensors else list(range(len(joint_idxs)))
-    rbs = RigidBodies(joints[:, joint_idxs].cpu().numpy(), oris)
-    
 
-    arr = Arrows(origins=joints[:, joint_idxs].cpu().numpy(),tips = joints[:, joint_idxs].cpu().numpy() - accs * 1/30)
     #rbs_v = RigidBodies(joints[:, joint_idxs].cpu().numpy(), v_oris,color=(0,0,0,1))
 
     # Display the SMPL ground-truth with a semi-transparent mesh so we can see the IMUs.
@@ -98,5 +84,5 @@ if __name__ == "__main__":
     v = Viewer()
     v.playback_fps = 30.0
 
-    v.scene.add(smpl_seq, rbs, arr)
+    v.scene.add(smpl_seq)
     v.run()

@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # https://dip.is.tue.mpg.de/download.php
     # Download the "Reference SMPL pose parameters for TotalCapture dataset" and point the following path to
     # one of the extracted pickle files.
-    with open("./s1_acting1.pkl", "rb") as f:
+    with open("/home/chqian/DATA/Dataset/DIP/TotalCapture_Real_60FPS/s1_acting1.pkl", "rb") as f:
         data = pkl.load(f, encoding="latin1")
 
     oris = data["ori"]
