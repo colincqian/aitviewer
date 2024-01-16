@@ -1,6 +1,6 @@
 # Copyright (C) 2023  ETH Zurich, Manuel Kaufmann, Velko Vechev, Dario Mylonopoulos
 import pickle as pkl
-
+import os
 import torch
 import numpy as np
 from pytorch3d.transforms import matrix_to_axis_angle
@@ -12,7 +12,35 @@ from aitviewer.renderables.smpl import SMPLSequence
 from aitviewer.viewer import Viewer
 from examples.load_UWB_IMU import load_uwb_imu_dataset
 
-def visualize_smpl_models(path,rgb=(0.62, 0.62, 0.62),seq_end=-1,stride = 2,vis_leaf_joint_position=False):
+def load_imu(path,seq_name,frame_range=(0,15000),stride=2):
+    data = torch.load(path)
+
+    seq_id = None
+    for i,file_path in enumerate(data["fnames"]):
+        if seq_name == os.path.basename(file_path)+'.pt':
+            seq_id = i
+            break
+    if seq_id is None:
+        raise Exception(f"{seq_name} not Found !!")
+    
+    # Get the data.
+    oris = data["ori"][seq_id].numpy().reshape(-1,6,3,3)
+    accs = data["acc"][seq_id].numpy().reshape(-1,6,3)
+    if "vuwb" in data:
+        uwb = data["vuwb"][seq_id].numpy().reshape(-1,6,6)
+        uwb = uwb[frame_range[0]:frame_range[1]:1]
+    else:
+        uwb = None
+
+    # Subject 6 is female, all others are male (cf. metadata.txt included in the downloaded zip file).
+    gender = "male"
+    oris = oris[frame_range[0]:frame_range[1]:stride]
+    accs = accs[frame_range[0]:frame_range[1]:stride]
+
+
+    return oris,accs
+
+def visualize_smpl_models(path,rgb=(0.62, 0.62, 0.62),frame_range=(0,15000),stride = 2,vis_leaf_joint_position=False):
     data = torch.load(path)
     uwb_imu_rot = np.array([[1, 0, 0], [0, 0, 1.0], [0, -1, 0]])
     
@@ -24,8 +52,8 @@ def visualize_smpl_models(path,rgb=(0.62, 0.62, 0.62),seq_end=-1,stride = 2,vis_
     gender = "male"
 
     # Downsample to 30 Hz.
-    poses = poses[:seq_end:stride]
-    tran = tran[:seq_end:stride]
+    poses = poses[frame_range[0]:frame_range[1]:stride]
+    tran = tran[frame_range[0]:frame_range[1]:stride]
     # DIP has no shape information, assume the mean shape.
     betas = torch.zeros((poses.shape[0], 10)).float().to(C.device)
     smpl_layer = SMPLLayer(model_type="smpl", gender=gender, device=C.device)
@@ -43,11 +71,11 @@ def visualize_smpl_models(path,rgb=(0.62, 0.62, 0.62),seq_end=-1,stride = 2,vis_
     
     # Display the SMPL ground-truth with a semi-transparent mesh so we can see the IMUs.
     smpl_seq = SMPLSequence(poses_body=poses[:, 3:], smpl_layer=smpl_layer, poses_root=poses[:, :3],trans=tran)
-    smpl_seq.mesh_seq.color = rgb + (0.5,)
+    smpl_seq.mesh_seq.color = rgb + (1.0,)
     
     return smpl_seq,joints
 
-def visualize_leaf_joint_position(path,joints,seq_end=-1,stride = 2):
+def visualize_leaf_joint_position(path,joints,frame_range=(0,15000),stride = 2):
     data = torch.load(path)
     
     # Get the data.
@@ -57,9 +85,9 @@ def visualize_leaf_joint_position(path,joints,seq_end=-1,stride = 2):
     
     # Downsample to 30 Hz.
     #leaf_joint_position = leaf_joint_position[:seq_end:stride,[2,3,4,0,1]]
-    leaf_joint_position = leaf_joint_position[:seq_end:stride]
-    root_ori = root_ori[:seq_end:stride]
-    tran = tran[:seq_end:stride]
+    leaf_joint_position = leaf_joint_position[frame_range[0]:frame_range[1]:stride]
+    root_ori = root_ori[frame_range[0]:frame_range[1]:stride]
+    tran = tran[frame_range[0]:frame_range[1]:stride]
     f,n,_ = leaf_joint_position.size()
     leaf_joint_position = leaf_joint_position @ root_ori.permute(0,2,1)
   
@@ -81,31 +109,43 @@ if __name__ == "__main__":
     #          "/home/chqian/Project/PIP/PIP/data/result/20231124_marker_label_tests/PIP_vacc_vrot_vuwb_no_opt/0.pt",
     #          "/home/chqian/Project/PIP/PIP/data/result/20231124_marker_label_tests/PIP_no_opt/0.pt"
     #           ]
-    show_lj_pos = True
+    joint_idxs = [20, 21, 4, 5, 15, 0]
+    show_lj_pos = False
+    show_imu = False
     seq_id = 2
+    stride = 2
+    seq_s_e = (5000,20000)
+    demo_sensor_path = "/home/chqian/Project/PIP/PIP/data/dataset_work/UWB_IMU/SIGGRAPH_dataset/demo.pt"
     paths = [
-            #f"/home/chqian/Project/PIP/PIP/data/result/SIGGRAPH_dataset/edge_dp0.4_L0.01_rnn_along/{seq_id}.pt",
-            # f"/home/chqian/Project/PIP/PIP/data/result/SIGGRAPH_dataset/PIP/{seq_id}.pt",
-            # f"/home/chqian/Project/PIP/PIP/data/result/SIGGRAPH_dataset/PIP_GNN_fusion/{seq_id}.pt",
-
-            f"/home/chqian/Project/PIP/PIP/data/result/SIGGRAPH_dataset/PIP_GNN_fusion/{seq_id}.pt",
-            #f"/home/chqian/Project/PIP/PIP/data/result/SIGGRAPH_dataset/PIP_GNN_fusion{seq_id}.pt",
+            #"/home/chqian/Project/PIP/PIP/demo_output/PIP_GNN_fusion/processed_01_pantry_take_1.pkl.pt",
+           # "/home/chqian/Project/PIP/PIP/demo_output/PIP/processed_01_pantry_take_1.pkl.pt",
+            #"/home/chqian/Project/PIP/PIP/demo_output/PIP_GNN_fusionfinetuned/processed_01_pantry_take_1.pkl.pt",
+            "/home/chqian/Project/PIP/PIP/demo_output/PIP_GNN_fusion/processed_01_pantry_take_1.pkl.pt",
+            "/home/chqian/Project/PIP/PIP/demo_output/PIP/processed_01_pantry_take_1.pkl.pt",
+            "/home/chqian/Project/PIP/PIP/demo_output/TIP/seq_uwbimu_01_pantry_take_1.pkl.pt",
+            
              ]
       
-    colors = [(0.627, 0.627, 0.627),(0.3, 0.3, 0.3)]
+    colors = [(0.627, 0.3, 0.3),(0.3, 0.627, 0.3),(0.3, 0.3, 0.627)]
     smpl_seqs = [];rb_seq = []
+    joints = []
     for p,c in zip(paths,colors):
-        smpl_s,joint = visualize_smpl_models(p,rgb=c,seq_end=15000,stride=4)
+        smpl_s,joint = visualize_smpl_models(p,rgb=c,frame_range=seq_s_e,stride=stride)
         smpl_seqs.append(smpl_s)
+        f = 60//stride
+        jerk = ((joint[3:] - 3 * joint[2:-1] + 3 * joint[1:-2] - joint[:-3]) * (f ** 3)).norm(dim=2).mean()
+        print("jittering",jerk/1000)
         if show_lj_pos:
-            rb_seq.extend(visualize_leaf_joint_position(p,joint,seq_end=15000,stride=4))
+            rb_seq.extend(visualize_leaf_joint_position(p,joint,frame_range=seq_s_e,stride=stride))
         
+        if show_imu:
+            oris,accs = load_imu(demo_sensor_path,os.path.basename(p),frame_range=seq_s_e,stride=stride)
+            rbs = RigidBodies(joint[:, joint_idxs].cpu().numpy(), oris)
+            arr = Arrows(origins=joint[:, joint_idxs].cpu().numpy(),tips = joint[:, joint_idxs].cpu().numpy() - accs * 1/30)
+            rb_seq.extend([rbs,arr])
         
-    gt_path = "/home/chqian/Project/PIP/PIP/data/dataset_work/UWB_IMU/SIGGRAPH_dataset/test.pt"
-    #gt_path = "/home/chqian/Project/PIP/PIP/data/dataset_work/DIP_IMU/test.pt"
     
-    smpl_gt,*res = load_uwb_imu_dataset(gt_path,seq_id=seq_id,rgb=(0.1,0.8,0.1),seq_end=15000,stride=4)
-    smpl_seqs.append(smpl_gt)
+    
     
     # Add everything to the scene and display at 30 fps.
     v = Viewer()

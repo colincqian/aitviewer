@@ -42,26 +42,6 @@ if __name__ == "__main__":
         betas=betas,
     )
 
-    # This is the sensor placement (cf. https://github.com/eth-ait/dip18/issues/16).
-    sensor_placement = [
-        "head",
-        "sternum",
-        "pelvis",
-        "lshoulder",
-        "rshoulder",
-        "lupperarm",
-        "rupperarm",
-        "llowerarm",
-        "rlowerarm",
-        "lupperleg",
-        "rupperleg",
-        "llowerleg",
-        "rlowerleg",
-        "lhand",
-        "rhand",
-        "lfoot",
-        "rfoot",
-    ]
 
     # We manually choose the SMPL joint indices cooresponding to the above sensor placement.
     joint_idxs = [15, 12, 0, 13, 14, 16, 17, 20, 21, 1, 2, 4, 5, 22, 23, 10, 11]  
@@ -78,5 +58,5 @@ if __name__ == "__main__":
     v = Viewer()
     v.playback_fps = 30.0
 
-    v.scene.add(smpl_seq, rbs)
+    v.scene.add(smpl_seq, rbs) 
     v.run()

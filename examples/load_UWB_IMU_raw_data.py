@@ -12,7 +12,9 @@ from aitviewer.renderables.smpl import SMPLSequence
 from aitviewer.viewer import Viewer
 import pandas as pd
 
+KEYS = ["time[ms]","x_gt","y_gt","z_gt","qw_est","qx_est","qy_est","qz_est"]
 uwb_imu_mapping = torch.tensor([1, 2, 4, 5, 3, 0])
+
 def _syn_acc(v, smooth_n=4):
     r"""
     Synthesize accelerations from vertex positions.
@@ -52,7 +54,8 @@ def load_csv(csv_file: str, resample = False):
     device_ids = [0,1,2,3,4,5]
     devices_id_val = set(data[device_key])
     #keys = ["time[ms]","x_gt","y_gt","z_gt","qx_gt","qy_gt","qz_gt","qw_gt"]
-    keys = ["time","x","y","z","qx","qy","qz","qw"]
+    #keys = ["time","x","y","z","qx","qy","qz","qw"]
+    keys = ["time[ms]","x_gt","y_gt","z_gt","qx_est","qy_est","qz_est","qw_est"]
     output_data = []
     for dev_id in device_ids:
         if dev_id not in devices_id_val:
@@ -64,11 +67,8 @@ def load_csv(csv_file: str, resample = False):
 
         if resample:
             imu_df = device_data[keys]
-            # imu_df = resample_time_series(imu_df, time_col="time[ms]",
-            #                             val_col=["x_gt","y_gt","z_gt","qx_gt","qy_gt","qz_gt","qw_gt"],
-            #                             desired_time_stamp="16.667ms")
-            imu_df = resample_time_series(imu_df, time_col="time",
-                                        val_col=["x","y","z","qx","qy","qz","qw"],
+            imu_df = resample_time_series(imu_df, time_col=keys[0],
+                                        val_col=keys[1:],
                                         desired_time_stamp="16.667ms")
         else:
             imu_df = device_data[keys[1:]]
@@ -118,7 +118,9 @@ def process_imu_ori(imu_ori: torch.Tensor, align_init_ori = False):
 
 if __name__ == "__main__":
     #csv_file_path = "/home/chqian/DATA/Motion_capture_raw_dataset/Dataset_B/subject_4/freestyle/04_freestyle_devices_0/dataset_imu.csv"
-    csv_file_path = "/home/chqian/DATA/UWB_test_data/20231121_markers_tests-20231122T092610Z-001/20231121_markers_tests/aligned_dense_markers.csv"
+    #csv_file_path = "/home/chqian/DATA/UWB_test_data/20231121_markers_tests-20231122T092610Z-001/20231121_markers_tests/aligned_dense_markers.csv"
+    csv_file_path = "/home/chqian/DATA/CVPR_dataset/Motion_capture_raw_dataset/20231124_marker_label_tests/subject_4/skeleton_standing/_device_skeleton_standing_1/dataset_imu.csv"
+    #csv_file_path = "/home/chqian/DATA/Motion_capture_raw_dataset/Dataset_B/subject_4/freestyle_chair/04_freestyle_devices_chair_1/dataset_imu.csv"
     output_data = load_csv(csv_file_path,resample=True)
     frame_num, device_num, dim = output_data.shape
     
@@ -132,13 +134,13 @@ if __name__ == "__main__":
     imu_ori,imu_pos = get_valid_transformation(imu_ori,imu_pos)
     imu_acc = _syn_acc(imu_pos)
     
-    imu_ori = process_imu_ori(imu_ori,align_init_ori=True)
+    imu_ori = process_imu_ori(imu_ori,align_init_ori=False)
 
     rb = RigidBodies(imu_pos.cpu().numpy(), imu_ori.cpu().numpy(),color=(0,0,0,1))
     arr = Arrows(origins=imu_pos.cpu().numpy(), tips=imu_pos.cpu().numpy() + 0.01 * imu_acc.cpu().numpy())
     frame_num = imu_ori.size(0)
     torch.save({'acc': [imu_acc[:,uwb_imu_mapping]], 'ori': [imu_ori[:,uwb_imu_mapping]], 'pose': [torch.zeros(frame_num,24,3)], 'tran': [torch.zeros(frame_num,3)]},
-               "/home/chqian/Project/PIP/PIP/data/dataset_work/UWB_IMU/Dataset_B_not_align/test.pt")
+               "/home/chqian/Project/PIP/PIP/data/dataset_work/UWB_IMU/20231124_marker_label_tests/test.pt")
     # # Add everything to the scene and display at 30 fps.
     v = Viewer()
     v.playback_fps = 30.0
