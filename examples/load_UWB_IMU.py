@@ -49,7 +49,7 @@ def load_processed_uwb_imu_pkl(file_path,rgb,seq_end=-1,stride=2):
     
     return smpl_seq,joints,oris,accs,None
 
-def load_uwb_imu_dataset(path,seq_id,rgb,seq_end=-1,stride=2):
+def load_uwb_imu_dataset(path,seq_id,rgb,seq_end=-1,stride=2,beta=None):
     data = torch.load(path)
 
     # Get the data.
@@ -68,14 +68,17 @@ def load_uwb_imu_dataset(path,seq_id,rgb,seq_end=-1,stride=2):
 
     # Downsample to 30 Hz.
     poses = poses[:seq_end:stride]
-    # import ipdb
-    # ipdb.set_trace()
+
     oris = oris[:seq_end:stride]
     tran = tran[:seq_end:stride]
     accs = accs[:seq_end:stride]
-
+    tran = torch.zeros_like(tran)
     # DIP has no shape information, assume the mean shape.
-    betas = torch.zeros((poses.shape[0], 10)).float().to(C.device)
+    if beta is None:
+        betas = torch.zeros((poses.shape[0], 10)).float().to(C.device)
+    else:
+        betas = beta.repeat(poses.shape[0], 1).float().to(C.device)
+        
     smpl_layer = SMPLLayer(model_type="smpl", gender=gender, device=C.device)
     poses[:,20*3:22*3] = 0 #hard code hand pose
 
@@ -85,13 +88,13 @@ def load_uwb_imu_dataset(path,seq_id,rgb,seq_end=-1,stride=2):
         poses_body=poses[:, 3:].to(C.device),
         poses_root=poses[:, :3].to(C.device),
         betas=betas,
-        trans=tran.to(C.device)
+        trans=tran.to(C.device),
     )
-    
 
     # Display the SMPL ground-truth with a semi-transparent mesh so we can see the IMUs.
-    smpl_seq = SMPLSequence(poses_body=poses[:, 3:], smpl_layer=smpl_layer, poses_root=poses[:, :3],trans=tran)
-    smpl_seq.mesh_seq.color = rgb + (0.5,)
+    print(betas)
+    smpl_seq = SMPLSequence(poses_body=poses[:, 3:], smpl_layer=smpl_layer, poses_root=poses[:, :3],trans=tran,betas=betas)
+    smpl_seq.mesh_seq.color = rgb + (1.0,)
     
     return smpl_seq,joints,oris,accs,uwb
     

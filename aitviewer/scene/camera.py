@@ -988,6 +988,24 @@ class ViewerCamera(CameraInterface):
             self.near = cam_dict["near"]
             self.far = cam_dict["far"]
 
+
+    def load_cam_file(self,file_name):
+        """Loads the camera parameters"""
+        cam_dir = C.export_dir + "/camera_params/"
+        if not os.path.exists(cam_dir):
+            print("camera config does not exist")
+        else:
+            #cam_dict = joblib.load(cam_dir + "cam_params.pkl")
+            cam_dict = joblib.load(cam_dir + f"{file_name}")
+            self.position = cam_dict["position"]
+            self.target = cam_dict["target"]
+            self.up = cam_dict["up"]
+            self.ZOOM_FACTOR = cam_dict["ZOOM_FACTOR"]
+            self.ROT_FACTOR = cam_dict["ROT_FACTOR"]
+            self.PAN_FACTOR = cam_dict["PAN_FACTOR"]
+            self.near = cam_dict["near"]
+            self.far = cam_dict["far"]
+            
     def update_matrices(self, width, height):
         # Compute projection matrix.
         if self.is_ortho:

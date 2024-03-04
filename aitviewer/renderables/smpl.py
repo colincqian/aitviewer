@@ -178,7 +178,8 @@ class SMPLSequence(Node):
             is_selectable=False,
             gui_affine=False,
             color=kwargs.get("color", (160 / 255, 160 / 255, 160 / 255, 1.0)),
-            name="Mesh",
+            # name="Mesh",
+            **kwargs
         )
         self._add_node(self.mesh_seq)
 
@@ -310,13 +311,28 @@ class SMPLSequence(Node):
             smpl_layer = SMPLLayer(model_type="smplh", gender="neutral")
 
         data = np.load(file)
-
         return cls(
             smpl_layer=smpl_layer,
             poses_body=data["poses_body"],
             poses_root=data["poses_root"],
             betas=data["betas"],
             trans=data["trans"],
+            **kwargs,
+        )
+
+    @classmethod
+    def from_npz_romp(cls, file: Union[IO, str], smpl_layer: SMPLLayer = None, **kwargs):
+        """Creates a SMPL sequence from a .npz file exported through the 'export' function."""
+        if smpl_layer is None:
+            smpl_layer = SMPLLayer(model_type="smplh", gender="neutral")
+
+        results = np.load(file,allow_pickle=True)['results'][()]
+        return cls(
+            smpl_layer=smpl_layer,
+            poses_body=results["body_pose"],
+            poses_root=results["global_orient"],
+            betas=results["smpl_betas"],
+            trans=results["cam_trans"],
             **kwargs,
         )
 

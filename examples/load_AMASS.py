@@ -13,7 +13,7 @@ if __name__ == "__main__":
     # We set transparency to 0.5 and render the joint coordinates systems.
     c = (149 / 255, 85 / 255, 149 / 255, 0.5)
     seq_amass = SMPLSequence.from_amass(
-        npz_data_path=os.path.join(C.datasets.amass, "ACCAD/Female1Running_c3d/C2 - Run to stand_poses.npz"),
+        npz_data_path="/home/chqian/Project/PIP/PIP/data/AMASS_raw/ACCAD/Female1General_c3d/A1 - Stand_poses.npz",
         fps_out=60.0,
         color=c,
         name="AMASS Running",

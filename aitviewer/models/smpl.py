@@ -233,7 +233,6 @@ class SMPLLayer(nn.Module, ABC):
             reye_pose=poses_reye,
             expression=expression,
         )
-
         return output.vertices, output.joints
 
     def forward(self, *args, **kwargs):

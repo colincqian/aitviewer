@@ -46,6 +46,7 @@ class Configuration(object):
             if hasattr(self._conf, item):
                 # Some attributes of the config are converted to torch objects automatically.
                 if item == "device":
+                    return torch.device("cpu")
                     return torch.device(self._conf.get("device", "cuda:0") if self._gpu_available else "cpu")
                 elif item == "f_precision":
                     return getattr(torch, "float{}".format(self._conf.get("f_precision", 32)))
